@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy - Savings Goals</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .goals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .goal-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 22px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .goal-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .goal-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .goal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e1b4b;
+        }
+
+        .goal-numbers {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .goal-actions {
+            margin-top: 18px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="nav-container">
+            <div class="brand">
+                <h1>💰 BudgetBuddy</h1>
+                <p>Smart Expense Tracker</p>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">Dashboard</a>
+                <a href="transactions.html" class="nav-link">Transactions</a>
+                <a href="budget.html" class="nav-link">Budget</a>
+                <a href="savings.html" class="nav-link active">Savings Goals</a>
+                <a href="reports.html" class="nav-link">Reports</a>
+                <a href="profile.html" class="nav-link">Profile</a>
+                <a href="admin.html" class="nav-link admin-only" id="adminNavLink" style="display: none;">Admin</a>
+            </nav>
+            <div class="user-badge">
+                <span id="navUserName">User</span>
+                <button onclick="logout()" class="btn-logout">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <div class="welcome">
+            <h2>Savings Goals</h2>
+            <p>Set ambitious financial goals, track progress, and celebrate milestones.</p>
+        </div>
+
+        <!-- Add Goal Section -->
+        <div class="section">
+            <h2>Add New Savings Goal</h2>
+
+            <form id="savingsForm" onsubmit="handleCreateGoal(event)">
+                <div class="form">
+                    <div>
+                        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Goal Name *</label>
+                        <input type="text" id="goalName" placeholder="e.g., Emergency Fund, Laptop, Vacation" required>
+                    </div>
+
+                    <div>
+                        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Target Amount (₹) *</label>
+                        <input type="number" step="0.01" min="1" id="targetAmount" placeholder="e.g., 50000" required>
+                    </div>
+
+                    <div>
+                        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Initial Saved Amount (₹)</label>
+                        <input type="number" step="0.01" min="0" id="savedAmount" placeholder="e.g., 5000 (default 0)">
+                    </div>
+                </div>
+
+                <div style="margin-top: 18px;">
+                    <button type="submit" class="btn-primary">Create Savings Goal</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Summary Totals -->
+        <div class="summary">
+            <div class="card">
+                <h3>Active Goals</h3>
+                <p id="totalGoalsCount" style="color: #4f46e5;">0</p>
+            </div>
+            <div class="card">
+                <h3>Total Target</h3>
+                <p id="totalTargetAmount" style="color: #1e1b4b;">₹0</p>
+            </div>
+            <div class="card">
+                <h3>Total Amount Saved</h3>
+                <p id="totalSavedAmount" class="income">₹0</p>
+            </div>
+        </div>
+
+        <!-- Goals List -->
+        <div class="section">
+            <h2>My Goals</h2>
+            <div id="goalsContainer" class="goals-grid">
+                <p style="color: #888; padding: 20px;">Loading your goals...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        const user = requireAuth();
+
+        if (user) {
+            document.getElementById("navUserName").textContent = user.name;
+            if (user.role === "admin") {
+                document.getElementById("adminNavLink").style.display = "inline-block";
+            }
+        }
+
+        function logout() {
+            clearAuthSession();
+            window.location.href = "login.html";
+        }
+
+        async function loadGoals() {
+            try {
+                const res = await apiFetch("/api/savings");
+                const goals = await res.json();
+
+                const container = document.getElementById("goalsContainer");
+                container.innerHTML = "";
+
+                let totalTarget = 0;
+                let totalSaved = 0;
+
+                document.getElementById("totalGoalsCount").textContent = goals.length;
+
+                if (goals.length === 0) {
+                    container.innerHTML = `<p style="color: #888; grid-column: span 3; text-align: center; padding: 30px;">No savings goals set yet. Create your first goal above!</p>`;
+                    document.getElementById("totalTargetAmount").textContent = "₹0";
+                    document.getElementById("totalSavedAmount").textContent = "₹0";
+                    return;
+                }
+
+                goals.forEach(g => {
+                    const target = Number(g.target_amount);
+                    const saved = Number(g.saved_amount);
+                    totalTarget += target;
+                    totalSaved += saved;
+
+                    const pct = Math.min(100, Math.round((saved / target) * 100));
+                    const isCompleted = saved >= target;
+
+                    const card = document.createElement("div");
+                    card.className = "goal-card";
+                    card.innerHTML = `
+                        <div class="goal-card-header">
+                            <div>
+                                <div class="goal-title">${escapeHtml(g.goal_name)}</div>
+                                <span class="badge ${isCompleted ? 'badge-income' : 'badge-expense'}" style="margin-top: 6px;">
+                                    ${isCompleted ? '🎉 Goal Reached!' : `${pct}% Completed`}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="goal-numbers">
+                            <span>Saved: <strong style="color: #16a34a;">₹${saved.toLocaleString()}</strong></span>
+                            <span>Target: <strong>₹${target.toLocaleString()}</strong></span>
+                        </div>
+
+                        <div class="progress-container" style="height: 14px;">
+                            <div class="progress-bar" style="width: ${pct}%; background-color: ${isCompleted ? '#16a34a' : '#4f46e5'};"></div>
+                        </div>
+
+                        <div class="goal-actions">
+                            <button class="btn-action-edit" onclick="updateSavedAmount(${g.id}, '${escapeQuote(g.goal_name)}', ${saved}, ${target})">Update Saved Amount</button>
+                            <button class="btn-action-delete" onclick="deleteGoal(${g.id})">Delete</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+
+                document.getElementById("totalTargetAmount").textContent = `₹${totalTarget.toLocaleString()}`;
+                document.getElementById("totalSavedAmount").textContent = `₹${totalSaved.toLocaleString()}`;
+
+            } catch (err) {
+                console.error("Load goals error:", err);
+            }
+        }
+
+        async function handleCreateGoal(event) {
+            event.preventDefault();
+            const name = document.getElementById("goalName").value.trim();
+            const target = Number(document.getElementById("targetAmount").value);
+            const saved = Number(document.getElementById("savedAmount").value) || 0;
+
+            if (!name || target <= 0) {
+                alert("Please provide a valid goal name and positive target amount.");
+                return;
+            }
+
+            try {
+                const res = await apiFetch("/api/savings", {
+                    method: "POST",
+                    body: {
+                        goal_name: name,
+                        target_amount: target,
+                        saved_amount: saved
+                    }
+                });
+
+                if (res.ok) {
+                    alert("✓ Savings goal created successfully!");
+                    document.getElementById("savingsForm").reset();
+                    loadGoals();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + (err.error || "Failed to create goal"));
+                }
+            } catch (err) {
+                console.error("Create goal error:", err);
+            }
+        }
+
+        async function updateSavedAmount(id, name, currentSaved, target) {
+            const input = prompt(`Update saved amount for "${name}" (Target: ₹${target.toLocaleString()}):`, currentSaved);
+            if (input === null) return;
+
+            const newAmount = Number(input);
+            if (isNaN(newAmount) || newAmount < 0) {
+                alert("Please enter a valid positive number.");
+                return;
+            }
+
+            try {
+                const res = await apiFetch(`/api/savings/${id}`, {
+                    method: "PUT",
+                    body: { saved_amount: newAmount }
+                });
+
+                if (res.ok) {
+                    loadGoals();
+                } else {
+                    alert("Failed to update savings goal.");
+                }
+            } catch (err) {
+                console.error("Update error:", err);
+            }
+        }
+
+        async function deleteGoal(id) {
+            if (!confirm("Are you sure you want to delete this savings goal?")) return;
+
+            try {
+                const res = await apiFetch(`/api/savings/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                    loadGoals();
+                } else {
+                    alert("Failed to delete goal.");
+                }
+            } catch (err) {
+                console.error("Delete error:", err);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeQuote(str) {
+            return String(str).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        }
+
+        loadGoals();
+    </script>
+
+</body>
+</html>
+

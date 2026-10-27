@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy - Monthly Budget</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <header>
+        <div class="nav-container">
+            <div class="brand">
+                <h1>💰 BudgetBuddy</h1>
+                <p>Smart Expense Tracker</p>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">Dashboard</a>
+                <a href="transactions.html" class="nav-link">Transactions</a>
+                <a href="budget.html" class="nav-link active">Budget</a>
+                <a href="savings.html" class="nav-link">Savings Goals</a>
+                <a href="reports.html" class="nav-link">Reports</a>
+                <a href="profile.html" class="nav-link">Profile</a>
+                <a href="admin.html" class="nav-link admin-only" id="adminNavLink" style="display: none;">Admin</a>
+            </nav>
+            <div class="user-badge">
+                <span id="navUserName">User</span>
+                <button onclick="logout()" class="btn-logout">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <div class="welcome">
+            <h2>Monthly Budget Management</h2>
+            <p>Set spending targets and prevent overspending with real-time budget tracking.</p>
+        </div>
+
+        <!-- Set Monthly Budget Form -->
+        <div class="section">
+            <h2>Set or Update Monthly Budget</h2>
+
+            <form id="budgetForm" onsubmit="handleSaveBudget(event)">
+                <div class="form">
+                    <div>
+                        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Select Month *</label>
+                        <input type="month" id="budgetMonth" required onchange="handleMonthChange()">
+                    </div>
+
+                    <div>
+                        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Budget Amount (₹) *</label>
+                        <input type="number" step="0.01" min="1" id="budgetAmount" placeholder="e.g., 25000" required>
+                    </div>
+                </div>
+
+                <div style="margin-top: 18px;">
+                    <button type="submit" class="btn-primary" id="saveBudgetBtn">Save Budget Target</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Budget Tracker Card for Selected Month -->
+        <div class="section">
+            <h2>Budget Tracking Status (<span id="statusMonthLabel">...</span>)</h2>
+
+            <div class="summary" style="margin-bottom: 20px;">
+                <div class="card">
+                    <h3>Budget Limit</h3>
+                    <p class="balance" id="displayBudgetLimit">₹0</p>
+                </div>
+                <div class="card">
+                    <h3>Actual Expenses</h3>
+                    <p class="expense" id="displayActualSpent">₹0</p>
+                </div>
+                <div class="card">
+                    <h3>Remaining Budget</h3>
+                    <p id="displayRemaining">₹0</p>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; color: #666; margin-bottom: 5px;">
+                    <span>Budget Consumption</span>
+                    <span id="progressPercentage">0%</span>
+                </div>
+                <div class="progress-container" style="height: 18px;">
+                    <div class="progress-bar" id="budgetProgressBar" style="width: 0%; height: 100%;"></div>
+                </div>
+            </div>
+
+            <div id="statusAlertBox" style="margin-top: 20px; padding: 15px; border-radius: 8px; display: none;">
+                <p id="statusAlertText" style="font-weight: 500; font-size: 15px;"></p>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        const user = requireAuth();
+        let userTransactions = [];
+
+        if (user) {
+            document.getElementById("navUserName").textContent = user.name;
+            if (user.role === "admin") {
+                document.getElementById("adminNavLink").style.display = "inline-block";
+            }
+        }
+
+        function logout() {
+            clearAuthSession();
+            window.location.href = "login.html";
+        }
+
+        // Initialize with current month
+        const now = new Date();
+        const currentMonthDefault = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById("budgetMonth").value = currentMonthDefault;
+
+        async function initPage() {
+            try {
+                // Fetch user transactions to calculate actual spending per month
+                const res = await apiFetch("/api/transactions");
+                userTransactions = await res.json();
+                loadMonthBudget(currentMonthDefault);
+            } catch (err) {
+                console.error("Init budget page error:", err);
+            }
+        }
+
+        function handleMonthChange() {
+            const selectedMonth = document.getElementById("budgetMonth").value;
+            if (selectedMonth) {
+                loadMonthBudget(selectedMonth);
+            }
+        }
+
+        async function loadMonthBudget(monthStr) {
+            document.getElementById("statusMonthLabel").textContent = monthStr;
+
+            // Calculate actual expenses for this month
+            let actualSpent = 0;
+            userTransactions.forEach(t => {
+                if (t.type === "expense" && t.created_at && t.created_at.startsWith(monthStr)) {
+                    actualSpent += Number(t.amount);
+                }
+            });
+
+            document.getElementById("displayActualSpent").textContent = `₹${actualSpent.toLocaleString()}`;
+
+            try {
+                const res = await apiFetch(`/api/budget/${monthStr}`);
+                const data = await res.json();
+
+                const limitEl = document.getElementById("displayBudgetLimit");
+                const remainingEl = document.getElementById("displayRemaining");
+                const progressEl = document.getElementById("budgetProgressBar");
+                const pctLabel = document.getElementById("progressPercentage");
+                const alertBox = document.getElementById("statusAlertBox");
+                const alertText = document.getElementById("statusAlertText");
+
+                if (data && data.length > 0) {
+                    const limit = Number(data[0].amount);
+                    document.getElementById("budgetAmount").value = limit;
+                    limitEl.textContent = `₹${limit.toLocaleString()}`;
+
+                    const remaining = limit - actualSpent;
+                    remainingEl.textContent = `₹${remaining.toLocaleString()}`;
+                    remainingEl.style.color = remaining >= 0 ? "#16a34a" : "#dc2626";
+
+                    const pct = Math.min(100, Math.round((actualSpent / limit) * 100));
+                    progressEl.style.width = `${pct}%`;
+                    pctLabel.textContent = `${pct}% used`;
+
+                    alertBox.style.display = "block";
+
+                    if (remaining < 0) {
+                        progressEl.style.backgroundColor = "#dc2626";
+                        alertBox.style.backgroundColor = "#fee2e2";
+                        alertBox.style.border = "1px solid #f87171";
+                        alertText.style.color = "#dc2626";
+                        alertText.textContent = `⚠️ Alert: You have exceeded your budget by ₹${Math.abs(remaining).toLocaleString()}!`;
+                    } else if (remaining <= limit * 0.2) {
+                        progressEl.style.backgroundColor = "#f59e0b";
+                        alertBox.style.backgroundColor = "#fef3c7";
+                        alertBox.style.border = "1px solid #fbbf24";
+                        alertText.style.color = "#b45309";
+                        alertText.textContent = `⚠️ Warning: You have used over 80% of your budget. Remaining: ₹${remaining.toLocaleString()}`;
+                    } else {
+                        progressEl.style.backgroundColor = "#16a34a";
+                        alertBox.style.backgroundColor = "#dcfce7";
+                        alertBox.style.border = "1px solid #86efac";
+                        alertText.style.color = "#16a34a";
+                        alertText.textContent = `✅ Good job: You are well within your monthly budget. Remaining: ₹${remaining.toLocaleString()}`;
+                    }
+
+                } else {
+                    limitEl.textContent = "Not Set";
+                    remainingEl.textContent = "-";
+                    remainingEl.style.color = "#222";
+                    document.getElementById("budgetAmount").value = "";
+                    progressEl.style.width = "0%";
+                    pctLabel.textContent = "0%";
+
+                    alertBox.style.display = "block";
+                    alertBox.style.backgroundColor = "#f1f5f9";
+                    alertBox.style.border = "1px solid #cbd5e1";
+                    alertText.style.color = "#64748b";
+                    alertText.textContent = "ℹ️ No budget limit set for this month yet. Enter an amount above to set one.";
+                }
+
+            } catch (err) {
+                console.error("Load budget error:", err);
+            }
+        }
+
+        async function handleSaveBudget(event) {
+            event.preventDefault();
+            const month = document.getElementById("budgetMonth").value;
+            const amount = Number(document.getElementById("budgetAmount").value);
+
+            if (!month || amount <= 0) {
+                alert("Please select a month and enter a valid budget amount.");
+                return;
+            }
+
+            try {
+                const res = await apiFetch("/api/budget", {
+                    method: "POST",
+                    body: { month, amount }
+                });
+
+                if (res.ok) {
+                    alert(`✓ Budget target of ₹${amount.toLocaleString()} saved for ${month}!`);
+                    loadMonthBudget(month);
+                } else {
+                    const err = await res.json();
+                    alert("Failed to save budget: " + (err.error || "Unknown error"));
+                }
+            } catch (err) {
+                console.error("Save budget error:", err);
+            }
+        }
+
+        initPage();
+    </script>
+
+</body>
+</html>
+

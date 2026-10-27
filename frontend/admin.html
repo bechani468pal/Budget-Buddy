@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            border-top: 4px solid #4f46e5;
+        }
+
+        .stat-card.green { border-top-color: #10b981; }
+        .stat-card.yellow { border-top-color: #f59e0b; }
+        .stat-card.purple { border-top-color: #8b5cf6; }
+
+        .stat-card h3 {
+            font-size: 13px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card p {
+            font-size: 26px;
+            font-weight: bold;
+            color: #111827;
+        }
+
+        .legacy-banner {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .search-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .search-input {
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 320px;
+            max-width: 100%;
+        }
+
+        .badge-active {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .badge-deactivated {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .btn-inspect {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 6px;
+            transition: background 0.2s;
+        }
+
+        .btn-inspect:hover {
+            background: #4338ca;
+        }
+
+        .btn-toggle-status {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-toggle-status:hover {
+            background: #e2e8f0;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(2px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-box {
+            background: white;
+            border-radius: 12px;
+            max-width: 850px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            padding: 28px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1e1b4b;
+        }
+
+        .btn-close-modal {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            color: #9ca3af;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .btn-close-modal:hover {
+            color: #111827;
+        }
+
+        .btn-add-user {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .btn-add-user:hover {
+            background: #4338ca;
+        }
+
+        .btn-add-user:active {
+            transform: scale(0.98);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        @media (max-width: 900px) {
+            .admin-stat-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 550px) {
+            .admin-stat-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="nav-container">
+            <div class="brand">
+                <h1>🛡️ BudgetBuddy Admin</h1>
+                <p>System Administration & Statistics</p>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">Dashboard</a>
+                <a href="transactions.html" class="nav-link">Transactions</a>
+                <a href="budget.html" class="nav-link">Budget</a>
+                <a href="savings.html" class="nav-link">Savings Goals</a>
+                <a href="reports.html" class="nav-link">Reports</a>
+                <a href="profile.html" class="nav-link">Profile</a>
+                <a href="admin.html" class="nav-link active admin-only" id="adminNavLink">Admin</a>
+            </nav>
+            <div class="user-badge">
+                <span id="navUserName">Admin</span>
+                <button onclick="logout()" class="btn-logout">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <div class="welcome">
+            <h2>Administrator Dashboard</h2>
+            <p>System overview, registered users directory, and platform metrics.</p>
+        </div>
+
+        <!-- System Statistics Grid -->
+        <div class="admin-stat-grid">
+            <div class="stat-card">
+                <h3>Registered Users</h3>
+                <p id="statUsers">0</p>
+                <div style="font-size: 12px; color: #6b7280; margin-top: 6px;">
+                    <span style="color: #10b981; font-weight: 600;" id="statActiveUsers">0 Active</span> &bull; 
+                    <span style="color: #ef4444; font-weight: 600;" id="statDeactivatedUsers">0 Deactivated</span>
+                </div>
+            </div>
+            <div class="stat-card green">
+                <h3>Total Transactions</h3>
+                <p id="statTransactions">0</p>
+            </div>
+            <div class="stat-card yellow">
+                <h3>Total Budgets Set</h3>
+                <p id="statBudgets">0</p>
+            </div>
+            <div class="stat-card purple">
+                <h3>Savings Goals Set</h3>
+                <p id="statSavings">0</p>
+            </div>
+        </div>
+
+        <!-- Financial Volume Summary -->
+        <div class="summary">
+            <div class="card">
+                <h3>System Recorded Income</h3>
+                <p class="income" id="statSysIncome">₹0</p>
+            </div>
+            <div class="card">
+                <h3>System Recorded Expenses</h3>
+                <p class="expense" id="statSysExpense">₹0</p>
+            </div>
+            <div class="card">
+                <h3>Net Platform Volume</h3>
+                <p class="balance" id="statSysVolume">₹0</p>
+            </div>
+        </div>
+
+        <!-- Legacy Records Preservation Notice -->
+        <div class="legacy-banner">
+            <div>
+                <strong style="color: #1e40af; font-size: 15px;">Legacy Data Preservation Status:</strong>
+                <p style="color: #1e3a8a; font-size: 13px; margin-top: 3px;">
+                    Historical records prior to multi-user migration are safely preserved in the database with <code>user_id = NULL</code>.
+                </p>
+            </div>
+            <div style="font-size: 13px; color: #1e40af; font-weight: 600;">
+                <span id="legacyTxCount">0</span> Unassigned Transactions | 
+                <span id="legacyBudCount">0</span> Budgets | 
+                <span id="legacySavCount">0</span> Goals
+            </div>
+        </div>
+
+        <!-- Registered Users Directory -->
+        <div class="section">
+            <div class="search-toolbar">
+                <div>
+                    <h2>Registered Users Directory (<span id="userCountBadge">0</span>)</h2>
+                    <p style="font-size: 13px; color: #6b7280; margin-top: 3px;">Manage users, assign roles, inspect finances, and control access</p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="userSearchInput" class="search-input" placeholder="🔍 Search by name or email..." oninput="handleSearchUsers()">
+                    <button class="btn-add-user" onclick="openAddUserModal()">
+                        <span style="font-size: 16px; font-weight: bold; line-height: 1;">+</span> Add New User
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table class="recent">
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Full Name</th>
+                            <th>Email Address</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Registration Date</th>
+                            <th>Transactions</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: #888; padding: 25px;">Loading users list...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Add New User Modal -->
+    <div id="addUserModal" class="modal-overlay" onclick="closeAddUserIfBackdrop(event)">
+        <div class="modal-box" style="max-width: 520px;">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">➕ Add New User</div>
+                    <p style="font-size: 13px; color: #6b7280; margin-top: 4px;">Register a new user directly to the system</p>
+                </div>
+                <button class="btn-close-modal" onclick="closeAddUserModal()">&times;</button>
+            </div>
+
+            <div id="addUserAlert" style="display: none; padding: 12px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px;"></div>
+
+            <form id="addUserForm" onsubmit="handleCreateUser(event)">
+                <div class="form-group">
+                    <label for="newUserName">Full Name <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="newUserName" class="form-control" required placeholder="e.g. Rahul Sharma" autocomplete="name">
+                </div>
+
+                <div class="form-group">
+                    <label for="newUserEmail">Email Address <span style="color: #ef4444;">*</span></label>
+                    <input type="email" id="newUserEmail" class="form-control" required placeholder="name@example.com" autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="newUserRole">Account Role</label>
+                    <select id="newUserRole" class="form-control" style="background: white;">
+                        <option value="user" selected>Standard User (Access to personal tracker)</option>
+                        <option value="admin">Administrator (Access to admin dashboard & management)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="newUserPassword">Password <span style="color: #ef4444;">*</span></label>
+                    <input type="password" id="newUserPassword" class="form-control" required minlength="6" placeholder="At least 6 characters" autocomplete="new-password">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 22px;">
+                    <label for="newUserConfirmPassword">Confirm Password <span style="color: #ef4444;">*</span></label>
+                    <input type="password" id="newUserConfirmPassword" class="form-control" required minlength="6" placeholder="Re-type password" autocomplete="new-password">
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn-secondary" onclick="closeAddUserModal()" style="padding: 10px 16px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer; font-size: 14px; font-weight: 600; color: #475569;">Cancel</button>
+                    <button type="submit" id="btnSubmitNewUser" class="btn-add-user" style="padding: 10px 20px;">
+                        Create User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Account Overview Modal (Admin Inspection) -->
+    <div id="overviewModal" class="modal-overlay" onclick="closeOverviewIfBackdrop(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="modalUserName">User Account Overview</div>
+                    <p style="font-size: 13px; color: #6b7280; margin-top: 4px;" id="modalUserMeta">Viewing account details in administrative inspection mode</p>
+                </div>
+                <button class="btn-close-modal" onclick="closeOverviewModal()">&times;</button>
+            </div>
+
+            <!-- User Info Badges -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <span class="badge" id="modalUserRole" style="background: #e0e7ff; color: #4338ca;">USER</span>
+                <span class="badge" id="modalUserStatus" style="background: #dcfce7; color: #15803d;">ACTIVE</span>
+                <span style="font-size: 13px; color: #6b7280; margin-left: auto;" id="modalUserJoined">Joined: -</span>
+            </div>
+
+            <!-- Financial Summary for Inspected User -->
+            <h3 style="font-size: 16px; color: #1f2937; margin-bottom: 12px;">Financial Summary for this User</h3>
+            <div class="summary" style="margin-bottom: 20px;">
+                <div class="card" style="padding: 16px;">
+                    <h3>Total Income</h3>
+                    <p class="income" id="modalUserIncome">₹0</p>
+                </div>
+                <div class="card" style="padding: 16px;">
+                    <h3>Total Expenses</h3>
+                    <p class="expense" id="modalUserExpense">₹0</p>
+                </div>
+                <div class="card" style="padding: 16px;">
+                    <h3>Current Balance</h3>
+                    <p class="balance" id="modalUserBalance">₹0</p>
+                </div>
+            </div>
+
+            <!-- Recent Transactions Table for Inspected User -->
+            <h3 style="font-size: 16px; color: #1f2937; margin-bottom: 12px;">Recent Transactions (Latest 10)</h3>
+            <div class="table-wrapper" style="margin-bottom: 20px;">
+                <table class="recent">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalTransactionsTbody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #888; padding: 15px;">No transactions found for this user.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Budgets and Goals Overview Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;">
+                <div>
+                    <h3 style="font-size: 15px; color: #1f2937; margin-bottom: 8px;">Configured Budgets</h3>
+                    <div id="modalBudgetsList" style="background: #f8fafc; border-radius: 8px; padding: 12px; font-size: 13px; color: #555;">
+                        Loading budgets...
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="font-size: 15px; color: #1f2937; margin-bottom: 8px;">Savings Goals</h3>
+                    <div id="modalSavingsList" style="background: #f8fafc; border-radius: 8px; padding: 12px; font-size: 13px; color: #555;">
+                        Loading savings goals...
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 25px; text-align: right;">
+                <button class="btn-secondary" onclick="closeOverviewModal()">Close Overview</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        // Enforce admin privileges on client side (backend also strictly verifies JWT role)
+        adminUser = requireAdminAuth();
+        let allUsersList = [];
+
+        if (adminUser) {
+            document.getElementById("navUserName").textContent = `${adminUser.name} (Admin)`;
+        }
+
+        function logout() {
+            clearAuthSession();
+            window.location.href = "login.html";
+        }
+
+        async function loadAdminData() {
+            try {
+                // 1. Fetch Stats
+                const statsRes = await apiFetch("/api/admin/stats");
+                const statsData = await statsRes.json();
+                const s = statsData.stats;
+
+                document.getElementById("statUsers").textContent = s.totalUsers;
+                if (document.getElementById("statActiveUsers")) {
+                    document.getElementById("statActiveUsers").textContent = `${s.activeUsers || 0} Active`;
+                }
+                if (document.getElementById("statDeactivatedUsers")) {
+                    document.getElementById("statDeactivatedUsers").textContent = `${s.deactivatedUsers || 0} Deactivated`;
+                }
+                document.getElementById("statTransactions").textContent = s.totalTransactions;
+                document.getElementById("statBudgets").textContent = s.totalBudgets;
+                document.getElementById("statSavings").textContent = s.totalSavingsGoals;
+
+                document.getElementById("statSysIncome").textContent = `₹${(s.totalVolume.income || 0).toLocaleString()}`;
+                document.getElementById("statSysExpense").textContent = `₹${(s.totalVolume.expense || 0).toLocaleString()}`;
+                const totalVol = (s.totalVolume.income || 0) + (s.totalVolume.expense || 0);
+                document.getElementById("statSysVolume").textContent = `₹${totalVol.toLocaleString()}`;
+
+                if (s.legacyRecords) {
+                    document.getElementById("legacyTxCount").textContent = s.legacyRecords.unassignedTransactions || 0;
+                    document.getElementById("legacyBudCount").textContent = s.legacyRecords.unassignedBudgets || 0;
+                    document.getElementById("legacySavCount").textContent = s.legacyRecords.unassignedSavingsGoals || 0;
+                }
+
+                // 2. Fetch Users Directory
+                const usersRes = await apiFetch("/api/admin/users");
+                const usersData = await usersRes.json();
+                allUsersList = usersData.users || [];
+                renderUsersTable(allUsersList);
+
+            } catch (err) {
+                console.error("Admin dashboard load error:", err);
+            }
+        }
+
+        function handleSearchUsers() {
+            const query = document.getElementById("userSearchInput").value.trim().toLowerCase();
+            const filtered = allUsersList.filter(u => 
+                (u.name && u.name.toLowerCase().includes(query)) ||
+                (u.email && u.email.toLowerCase().includes(query))
+            );
+            renderUsersTable(filtered);
+        }
+
+        function renderUsersTable(users) {
+            const tbody = document.getElementById("usersTableBody");
+            document.getElementById("userCountBadge").textContent = users.length;
+            tbody.innerHTML = "";
+
+            if (users.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #888; padding: 25px;">No users found matching your search.</td></tr>`;
+                return;
+            }
+
+            users.forEach(u => {
+                const tr = document.createElement("tr");
+                const joined = u.created_at ? new Date(u.created_at).toLocaleDateString() : "-";
+                const isAdm = u.role === "admin";
+                const status = u.status || "active";
+                const isActive = status === "active";
+
+                tr.innerHTML = `
+                    <td><strong>#${u.id}</strong></td>
+                    <td>${escapeHtml(u.name)}</td>
+                    <td>${escapeHtml(u.email)}</td>
+                    <td>
+                        <span class="badge ${isAdm ? 'badge-income' : ''}" style="${isAdm ? 'background: #fef3c7; color: #b45309;' : 'background: #e0e7ff; color: #4338ca;'}">
+                            ${u.role.toUpperCase()}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge ${isActive ? 'badge-active' : 'badge-deactivated'}">
+                            ${status.toUpperCase()}
+                        </span>
+                    </td>
+                    <td>${joined}</td>
+                    <td style="font-weight: 600;">${u.transaction_count || 0}</td>
+                    <td style="text-align: right;">
+                        <button class="btn-inspect" onclick="inspectUser(${u.id})">🔍 Inspect Account</button>
+                        ${u.id !== adminUser.id ? `
+                            <button class="btn-toggle-status" onclick="toggleUserStatus(${u.id}, '${status}', '${escapeQuote(u.name)}')">
+                                ${isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+                        ` : '<span style="font-size: 11px; color: #9ca3af;">(You)</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function inspectUser(userId) {
+            try {
+                const res = await apiFetch(`/api/admin/users/${userId}/overview`);
+                if (!res.ok) {
+                    alert("Failed to load user overview.");
+                    return;
+                }
+                const data = await res.json();
+                const u = data.user;
+                const fin = data.financialSummary;
+
+                // Populate modal
+                document.getElementById("modalUserName").textContent = `Account: ${u.name} (ID: #${u.id})`;
+                document.getElementById("modalUserMeta").textContent = `Email: ${u.email} | Inspected by Administrator`;
+                document.getElementById("modalUserRole").textContent = u.role.toUpperCase();
+                document.getElementById("modalUserStatus").textContent = (u.status || "active").toUpperCase();
+                document.getElementById("modalUserStatus").className = `badge ${(u.status || "active") === 'active' ? 'badge-active' : 'badge-deactivated'}`;
+                document.getElementById("modalUserJoined").textContent = `Registered: ${u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}`;
+
+                // Financial Summary
+                document.getElementById("modalUserIncome").textContent = `₹${fin.totalIncome.toLocaleString()}`;
+                document.getElementById("modalUserExpense").textContent = `₹${fin.totalExpense.toLocaleString()}`;
+                document.getElementById("modalUserBalance").textContent = `₹${fin.balance.toLocaleString()}`;
+
+                // Recent Transactions
+                const txTbody = document.getElementById("modalTransactionsTbody");
+                txTbody.innerHTML = "";
+                if (!data.recentTransactions || data.recentTransactions.length === 0) {
+                    txTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #888; padding: 15px;">No transactions recorded by this user yet.</td></tr>`;
+                } else {
+                    data.recentTransactions.forEach(t => {
+                        const tr = document.createElement("tr");
+                        const dateFormatted = t.created_at ? new Date(t.created_at).toLocaleDateString() : "-";
+                        tr.innerHTML = `
+                            <td>${dateFormatted}</td>
+                            <td>${escapeHtml(t.description)}</td>
+                            <td>${escapeHtml(t.category)}</td>
+                            <td><span class="badge ${t.type === 'income' ? 'badge-income' : 'badge-expense'}">${t.type.toUpperCase()}</span></td>
+                            <td style="font-weight: bold; color: ${t.type === 'income' ? '#16a34a' : '#dc2626'}">
+                                ${t.type === 'income' ? '+' : '-'}₹${Number(t.amount).toLocaleString()}
+                            </td>
+                        `;
+                        txTbody.appendChild(tr);
+                    });
+                }
+
+                // Budgets
+                const budgetsBox = document.getElementById("modalBudgetsList");
+                if (!data.budgets || data.budgets.length === 0) {
+                    budgetsBox.innerHTML = "No monthly budgets set by this user.";
+                } else {
+                    budgetsBox.innerHTML = data.budgets.map(b => 
+                        `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #e2e8f0;">
+                            <span>Month: <strong>${b.month}</strong></span>
+                            <span>Limit: <strong>₹${Number(b.amount).toLocaleString()}</strong></span>
+                        </div>`
+                    ).join("");
+                }
+
+                // Savings Goals
+                const savingsBox = document.getElementById("modalSavingsList");
+                if (!data.savingsGoals || data.savingsGoals.length === 0) {
+                    savingsBox.innerHTML = "No savings goals created by this user.";
+                } else {
+                    savingsBox.innerHTML = data.savingsGoals.map(g => {
+                        const pct = Math.min(100, Math.round((Number(g.saved_amount) / Number(g.target_amount)) * 100));
+                        return `<div style="padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <strong>${escapeHtml(g.goal_name)}</strong>
+                                <span>₹${Number(g.saved_amount).toLocaleString()} / ₹${Number(g.target_amount).toLocaleString()} (${pct}%)</span>
+                            </div>
+                        </div>`;
+                    }).join("");
+                }
+
+                document.getElementById("overviewModal").style.display = "flex";
+
+            } catch (err) {
+                console.error("Inspect user error:", err);
+            }
+        }
+
+        async function toggleUserStatus(userId, currentStatus, userName) {
+            const newStatus = currentStatus === "active" ? "deactivated" : "active";
+            const confirmMsg = `Are you sure you want to change '${userName}' status to ${newStatus.toUpperCase()}?`;
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const res = await apiFetch(`/api/admin/users/${userId}/status`, {
+                    method: "PUT",
+                    body: { status: newStatus }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(`✓ ${data.message}`);
+                    loadAdminData();
+                } else {
+                    const err = await res.json();
+                    alert("Failed to update status: " + (err.error || "Unknown error"));
+                }
+            } catch (err) {
+                console.error("Toggle status error:", err);
+            }
+        }
+
+        function closeOverviewModal() {
+            document.getElementById("overviewModal").style.display = "none";
+        }
+
+        function closeOverviewIfBackdrop(event) {
+            if (event.target.id === "overviewModal") {
+                closeOverviewModal();
+            }
+        }
+
+        // ==========================================
+        // Add User Modal Handlers
+        // ==========================================
+        function openAddUserModal() {
+            document.getElementById("addUserForm").reset();
+            const alertBox = document.getElementById("addUserAlert");
+            alertBox.style.display = "none";
+            document.getElementById("addUserModal").style.display = "flex";
+            setTimeout(() => document.getElementById("newUserName").focus(), 50);
+        }
+
+        function closeAddUserModal() {
+            document.getElementById("addUserModal").style.display = "none";
+        }
+
+        function closeAddUserIfBackdrop(event) {
+            if (event.target.id === "addUserModal") {
+                closeAddUserModal();
+            }
+        }
+
+        async function handleCreateUser(e) {
+    e.preventDefault();
+
+    const name = document.getElementById("newUserName").value.trim();
+    const email = document.getElementById("newUserEmail").value.trim();
+    const role = document.getElementById("newUserRole").value;
+    const password = document.getElementById("newUserPassword").value;
+    const confirmPassword = document.getElementById("newUserConfirmPassword").value;
+    const alertBox = document.getElementById("addUserAlert");
+    const submitButton = document.getElementById("btnSubmitNewUser");
+
+    function showMessage(message, success = false) {
+        alertBox.style.display = "block";
+        alertBox.textContent = message;
+        alertBox.style.background = success ? "#dcfce7" : "#fee2e2";
+        alertBox.style.color = success ? "#166534" : "#991b1b";
+    }
+
+    if (password !== confirmPassword) {
+        showMessage("Passwords do not match.");
+        return;
+    }
+
+    if (password.length < 6) {
+        showMessage("Password must be at least 6 characters long.");
+        return;
+    }
+
+    submitButton.disabled = true;
+    submitButton.textContent = "Creating...";
+
+    try {
+        const token = localStorage.getItem("budgetBuddyToken");
+
+if (!token) {
+    showMessage("Please log in again as an administrator.");
+    return;
+}
+
+const response = await fetch("/api/admin/users", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({
+        name,
+        email,
+        password,
+        role
+    })
+});
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Failed to create user.");
+        }
+
+        showMessage(data.message || "User created successfully!", true);
+
+        document.getElementById("addUserForm").reset();
+
+        if (typeof loadAdminData === "function") {
+            await loadAdminData();
+        }
+
+        if (typeof loadUsers === "function") {
+            await loadUsers();
+        }
+
+    } catch (error) {
+        showMessage(error.message || "Unable to create user.");
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Create User";
+    }
+}
+        function showAddUserAlert(msg, type = "error") {
+            const alertBox = document.getElementById("addUserAlert");
+            alertBox.style.display = "block";
+            if (type === "error") {
+                alertBox.style.background = "#fee2e2";
+                alertBox.style.color = "#b91c1c";
+                alertBox.style.border = "1px solid #fecaca";
+            } else {
+                alertBox.style.background = "#dcfce7";
+                alertBox.style.color = "#15803d";
+                alertBox.style.border = "1px solid #bbf7d0";
+            }
+            alertBox.textContent = msg;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeQuote(str) {
+            return String(str).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        }
+
+        loadAdminData();
+    </script>
+
+</body>
+</html>

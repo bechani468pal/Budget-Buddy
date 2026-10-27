@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <header>
+        <div class="nav-container">
+            <div class="brand">
+                <h1>💰 BudgetBuddy</h1>
+                <p>Smart Expense Tracker</p>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link active">Dashboard</a>
+                <a href="transactions.html" class="nav-link">Transactions</a>
+                <a href="budget.html" class="nav-link">Budget</a>
+                <a href="savings.html" class="nav-link">Savings Goals</a>
+                <a href="reports.html" class="nav-link">Reports</a>
+                <a href="profile.html" class="nav-link">Profile</a>
+                <a href="admin.html" class="nav-link admin-only" id="adminNavLink" style="display: none;">Admin</a>
+            </nav>
+            <div class="user-badge">
+                <span id="navUserName">Loading...</span>
+                <button onclick="logout()" class="btn-logout">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <div class="welcome">
+            <h2>Welcome back, <span id="welcomeUserName">User</span> 👋</h2>
+            <p>Here is your financial summary and monthly overview.</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary">
+            <div class="card">
+                <h3>Total Income</h3>
+                <p class="income" id="totalIncome">₹0</p>
+            </div>
+            <div class="card">
+                <h3>Total Expenses</h3>
+                <p class="expense" id="totalExpenses">₹0</p>
+            </div>
+            <div class="card">
+                <h3>Available Balance</h3>
+                <p class="balance" id="totalBalance">₹0</p>
+            </div>
+        </div>
+
+        <!-- Charts and Budget Overview Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+
+            <!-- Expense Breakdown Chart -->
+            <div class="section" style="margin-bottom: 0;">
+                <h2>Expense Overview</h2>
+                <div style="max-height: 280px; display: flex; justify-content: center; align-items: center;">
+                    <canvas id="expenseChart" style="max-height: 260px;"></canvas>
+                </div>
+                <p id="noChartMsg" style="text-align: center; color: #888; display: none; padding: 40px 0;">
+                    No expense transactions recorded yet.
+                </p>
+            </div>
+
+            <!-- Current Month Budget Status Card -->
+            <div class="section" style="margin-bottom: 0;">
+                <h2>
+                    <span>Monthly Budget</span>
+                    <a href="budget.html" style="font-size: 13px; color: #4f46e5; text-decoration: none;">Manage Budget →</a>
+                </h2>
+                <div style="padding: 10px 0;">
+                    <p style="font-size: 15px; color: #555;">Current Month: <strong id="currentMonthLabel">...</strong></p>
+                    <div style="margin: 15px 0;">
+                        <p style="font-size: 14px; color: #666; margin-bottom: 4px;">Budget Limit:</p>
+                        <p style="font-size: 22px; font-weight: bold; color: #1e1b4b;" id="dashBudgetAmount">₹0</p>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <p style="font-size: 14px; color: #666; margin-bottom: 4px;">Spent this month:</p>
+                        <p style="font-size: 20px; font-weight: bold; color: #dc2626;" id="dashSpentAmount">₹0</p>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="dashBudgetProgressBar" style="width: 0%;"></div>
+                    </div>
+                    <p id="dashBudgetWarning" style="margin-top: 12px; font-size: 14px; font-weight: 500;"></p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="section">
+            <h2>
+                <span>Recent Transactions</span>
+                <a href="transactions.html" style="font-size: 14px; color: #4f46e5; text-decoration: none;">View All Transactions →</a>
+            </h2>
+
+            <div class="table-wrapper">
+                <table class="recent">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentTransactionsTable">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #888; padding: 25px;">Loading transactions...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        const user = requireAuth();
+        let chartInstance = null;
+
+        if (user) {
+            document.getElementById("navUserName").textContent = user.name;
+            document.getElementById("welcomeUserName").textContent = user.name;
+            if (user.role === "admin") {
+                document.getElementById("adminNavLink").style.display = "inline-block";
+            }
+        }
+
+        function logout() {
+            clearAuthSession();
+            window.location.href = "login.html";
+        }
+
+        async function loadDashboardData() {
+            try {
+                // 1. Fetch Transactions
+                const res = await apiFetch("/api/transactions");
+                const transactions = await res.json();
+
+                let income = 0;
+                let expenses = 0;
+                const categories = {};
+
+                const now = new Date();
+                const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                let currentMonthExpenses = 0;
+
+                transactions.forEach(t => {
+                    const amt = Number(t.amount);
+                    if (t.type === "income") {
+                        income += amt;
+                    } else {
+                        expenses += amt;
+                        categories[t.category] = (categories[t.category] || 0) + amt;
+
+                        // Check if in current month
+                        if (t.created_at && t.created_at.startsWith(currentMonthStr)) {
+                            currentMonthExpenses += amt;
+                        }
+                    }
+                });
+
+                document.getElementById("totalIncome").textContent = `₹${income.toLocaleString()}`;
+                document.getElementById("totalExpenses").textContent = `₹${expenses.toLocaleString()}`;
+                document.getElementById("totalBalance").textContent = `₹${(income - expenses).toLocaleString()}`;
+
+                // Render Chart
+                renderExpenseChart(categories);
+
+                // Render Recent 5 Transactions
+                const tbody = document.getElementById("recentTransactionsTable");
+                tbody.innerHTML = "";
+
+                if (transactions.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #888; padding: 25px;">No transactions found. <a href="transactions.html">Add your first transaction!</a></td></tr>`;
+                } else {
+                    const recent5 = transactions.slice(0, 5);
+                    recent5.forEach(t => {
+                        const tr = document.createElement("tr");
+                        const dateFormatted = t.created_at ? new Date(t.created_at).toLocaleDateString() : "-";
+                        tr.innerHTML = `
+                            <td><strong>${escapeHtml(t.description)}</strong></td>
+                            <td>${escapeHtml(t.category)}</td>
+                            <td><span class="badge ${t.type === 'income' ? 'badge-income' : 'badge-expense'}">${t.type.toUpperCase()}</span></td>
+                            <td style="font-weight: bold; color: ${t.type === 'income' ? '#16a34a' : '#dc2626'}">
+                                ${t.type === 'income' ? '+' : '-'}₹${Number(t.amount).toLocaleString()}
+                            </td>
+                            <td>${dateFormatted}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                // 2. Fetch Current Month Budget
+                loadCurrentMonthBudget(currentMonthStr, currentMonthExpenses);
+
+            } catch (err) {
+                console.error("Dashboard load error:", err);
+            }
+        }
+
+        async function loadCurrentMonthBudget(monthStr, currentMonthSpent) {
+            document.getElementById("currentMonthLabel").textContent = monthStr;
+            document.getElementById("dashSpentAmount").textContent = `₹${currentMonthSpent.toLocaleString()}`;
+
+            try {
+                const res = await apiFetch(`/api/budget/${monthStr}`);
+                const data = await res.json();
+
+                const progressBar = document.getElementById("dashBudgetProgressBar");
+                const warningEl = document.getElementById("dashBudgetWarning");
+
+                if (data && data.length > 0) {
+                    const budgetLimit = Number(data[0].amount);
+                    document.getElementById("dashBudgetAmount").textContent = `₹${budgetLimit.toLocaleString()}`;
+
+                    const pct = Math.min(100, Math.round((currentMonthSpent / budgetLimit) * 100));
+                    progressBar.style.width = `${pct}%`;
+
+                    const remaining = budgetLimit - currentMonthSpent;
+
+                    if (remaining <= 0) {
+                        progressBar.style.backgroundColor = "#dc2626";
+                        warningEl.style.color = "#dc2626";
+                        warningEl.textContent = `⚠️ Exceeded budget by ₹${Math.abs(remaining).toLocaleString()}!`;
+                    } else if (remaining <= budgetLimit * 0.2) {
+                        progressBar.style.backgroundColor = "#f59e0b";
+                        warningEl.style.color = "#d97706";
+                        warningEl.textContent = `⚠️ Close to limit! Remaining: ₹${remaining.toLocaleString()}`;
+                    } else {
+                        progressBar.style.backgroundColor = "#16a34a";
+                        warningEl.style.color = "#16a34a";
+                        warningEl.textContent = `✅ Within budget! Remaining: ₹${remaining.toLocaleString()}`;
+                    }
+                } else {
+                    document.getElementById("dashBudgetAmount").textContent = "Not set";
+                    progressBar.style.width = "0%";
+                    warningEl.style.color = "#666";
+                    warningEl.innerHTML = `No budget set for this month. <a href="budget.html">Set one now</a>`;
+                }
+            } catch (err) {
+                console.error("Budget load error:", err);
+            }
+        }
+
+        function renderExpenseChart(categories) {
+            const keys = Object.keys(categories);
+            const values = Object.values(categories);
+
+            const canvas = document.getElementById("expenseChart");
+            const noChartMsg = document.getElementById("noChartMsg");
+
+            if (keys.length === 0) {
+                canvas.style.display = "none";
+                noChartMsg.style.display = "block";
+                return;
+            }
+
+            canvas.style.display = "block";
+            noChartMsg.style.display = "none";
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const ctx = canvas.getContext("2d");
+            chartInstance = new Chart(ctx, {
+                type: "pie",
+                data: {
+                    labels: keys,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: [
+                            "#4f46e5", "#06b6d4", "#10b981", "#f59e0b",
+                            "#ef4444", "#8b5cf6", "#ec4899", "#64748b"
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: "right" }
+                    }
+                }
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        loadDashboardData();
+    </script>
+
+</body>
+</html>

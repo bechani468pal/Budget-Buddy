@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy - Register</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .register-box {
+            background: white;
+            width: 360px;
+            padding: 35px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #4f46e5;
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 26px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 16px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #3730a3;
+        }
+
+        p {
+            text-align: center;
+            font-size: 14px;
+            color: #555;
+            margin-top: 15px;
+        }
+
+        a {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .msg-error {
+            color: #dc2626;
+            margin-top: 12px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .msg-success {
+            color: #16a34a;
+            margin-top: 12px;
+            text-align: center;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="register-box">
+
+        <h1>💰 BudgetBuddy</h1>
+        <h2>Create Account</h2>
+
+        <form id="registerForm">
+
+            <input
+                type="text"
+                id="name"
+                placeholder="Enter your name"
+                required
+            >
+
+            <input
+                type="email"
+                id="email"
+                placeholder="Enter your email"
+                required
+            >
+
+            <input
+                type="password"
+                id="password"
+                placeholder="Enter password (min 6 characters)"
+                required
+                minlength="6"
+            >
+
+            <button type="submit" id="submitBtn">Register</button>
+
+        </form>
+
+        <p id="message"></p>
+
+        <p>
+            Already have an account?
+            <a href="login.html">Login</a>
+        </p>
+
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        const registerForm = document.getElementById("registerForm");
+        const messageEl = document.getElementById("message");
+        const submitBtn = document.getElementById("submitBtn");
+
+        registerForm.addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const name = document.getElementById("name").value.trim();
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+
+            if (password.length < 6) {
+                messageEl.className = "msg-error";
+                messageEl.textContent = "Password must be at least 6 characters long.";
+                return;
+            }
+
+            messageEl.textContent = "";
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Creating account...";
+
+            try {
+                const response = await fetch(`${API_BASE}/api/register`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ name, email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    setAuthSession(data.token, data.user);
+
+                    messageEl.className = "msg-success";
+                    messageEl.textContent = "✓ Registration successful! Redirecting...";
+
+                    setTimeout(() => {
+                        window.location.href = "index.html";
+                    }, 600);
+
+                } else {
+                    messageEl.className = "msg-error";
+                    messageEl.textContent = data.error || "Registration failed.";
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Register";
+                }
+
+            } catch (error) {
+                console.error("Registration error:", error);
+                messageEl.className = "msg-error";
+                messageEl.textContent = "Could not connect to the server.";
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Register";
+            }
+        });
+    </script>
+
+</body>
+</html>
