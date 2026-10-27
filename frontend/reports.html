@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy - Reports & Export</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .report-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .export-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .btn-export {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .btn-export:hover {
+            background: #059669;
+        }
+
+        @media (max-width: 800px) {
+            .report-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="nav-container">
+            <div class="brand">
+                <h1>💰 BudgetBuddy</h1>
+                <p>Smart Expense Tracker</p>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">Dashboard</a>
+                <a href="transactions.html" class="nav-link">Transactions</a>
+                <a href="budget.html" class="nav-link">Budget</a>
+                <a href="savings.html" class="nav-link">Savings Goals</a>
+                <a href="reports.html" class="nav-link active">Reports</a>
+                <a href="profile.html" class="nav-link">Profile</a>
+                <a href="admin.html" class="nav-link admin-only" id="adminNavLink" style="display: none;">Admin</a>
+            </nav>
+            <div class="user-badge">
+                <span id="navUserName">User</span>
+                <button onclick="logout()" class="btn-logout">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <div class="welcome">
+            <h2>Financial Reports & Export</h2>
+            <p>Generate monthly expense breakdowns, track savings rates, and export your data as CSV.</p>
+        </div>
+
+        <!-- Controls: Select Month & Export CSV -->
+        <div class="section" style="padding: 18px 25px;">
+            <div class="export-bar" style="margin-bottom: 0;">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <label for="reportMonth" style="font-weight: 600; color: #374151; font-size: 14px;">Select Month:</label>
+                    <input type="month" id="reportMonth" style="width: auto; padding: 8px 12px;" onchange="generateReport()">
+                    <select id="reportScope" style="width: auto; padding: 8px 12px;" onchange="generateReport()">
+                        <option value="month">Selected Month Only</option>
+                        <option value="all">All Time (All Transactions)</option>
+                    </select>
+                </div>
+
+                <button class="btn-export" onclick="exportToCSV()">
+                    📥 Export to CSV (Excel)
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Totals for Selected Period -->
+        <div class="summary">
+            <div class="card">
+                <h3>Total Income</h3>
+                <p class="income" id="repIncome">₹0</p>
+            </div>
+            <div class="card">
+                <h3>Total Expenses</h3>
+                <p class="expense" id="repExpense">₹0</p>
+            </div>
+            <div class="card">
+                <h3>Net Savings</h3>
+                <p class="balance" id="repNet">₹0</p>
+                <span id="repSavingsRate" style="font-size: 12px; color: #666; margin-top: 4px; display: block;">Savings Rate: 0%</span>
+            </div>
+        </div>
+
+        <!-- Breakdown Grid -->
+        <div class="report-grid">
+            <!-- Category Breakdown Table -->
+            <div class="section" style="margin-bottom: 0;">
+                <h2>Expense Breakdown by Category</h2>
+                <div class="table-wrapper">
+                    <table class="recent">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Total Amount</th>
+                                <th>Share (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="categoryTableBody">
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #888; padding: 20px;">No expense data for this period.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Visual Chart -->
+            <div class="section" style="margin-bottom: 0;">
+                <h2>Category Distribution</h2>
+                <div style="max-height: 280px; display: flex; justify-content: center; align-items: center;">
+                    <canvas id="reportChart" style="max-height: 260px;"></canvas>
+                </div>
+                <p id="noReportChartMsg" style="text-align: center; color: #888; display: none; padding: 40px 0;">
+                    No expense data to chart.
+                </p>
+            </div>
+        </div>
+
+        <!-- Transactions Details for the Period -->
+        <div class="section">
+            <h2>Detailed Statement (<span id="periodLabel">Current Month</span>)</h2>
+            <div class="table-wrapper">
+                <table class="recent">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportTxTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #888; padding: 25px;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        const user = requireAuth();
+        let allTransactions = [];
+        let currentFilteredTx = [];
+        let chartInstance = null;
+
+        if (user) {
+            document.getElementById("navUserName").textContent = user.name;
+            if (user.role === "admin") {
+                document.getElementById("adminNavLink").style.display = "inline-block";
+            }
+        }
+
+        function logout() {
+            clearAuthSession();
+            window.location.href = "login.html";
+        }
+
+        // Set default month to current year-month
+        const now = new Date();
+        const currentMonthDefault = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById("reportMonth").value = currentMonthDefault;
+
+        async function initReports() {
+            try {
+                const res = await apiFetch("/api/transactions");
+                allTransactions = await res.json();
+                generateReport();
+            } catch (err) {
+                console.error("Reports load error:", err);
+            }
+        }
+
+        function generateReport() {
+            const selectedMonth = document.getElementById("reportMonth").value;
+            const scope = document.getElementById("reportScope").value;
+            const periodLabel = document.getElementById("periodLabel");
+
+            if (scope === "all") {
+                currentFilteredTx = [...allTransactions];
+                periodLabel.textContent = "All Time";
+            } else {
+                currentFilteredTx = allTransactions.filter(t => t.created_at && t.created_at.startsWith(selectedMonth));
+                periodLabel.textContent = selectedMonth || "Selected Month";
+            }
+
+            let totalIncome = 0;
+            let totalExpense = 0;
+            const catMap = {};
+
+            currentFilteredTx.forEach(t => {
+                const amt = Number(t.amount);
+                if (t.type === "income") {
+                    totalIncome += amt;
+                } else {
+                    totalExpense += amt;
+                    catMap[t.category] = (catMap[t.category] || 0) + amt;
+                }
+            });
+
+            const netSavings = totalIncome - totalExpense;
+            const savingsRate = totalIncome > 0 ? Math.round((netSavings / totalIncome) * 100) : 0;
+
+            document.getElementById("repIncome").textContent = `₹${totalIncome.toLocaleString()}`;
+            document.getElementById("repExpense").textContent = `₹${totalExpense.toLocaleString()}`;
+            document.getElementById("repNet").textContent = `₹${netSavings.toLocaleString()}`;
+            document.getElementById("repNet").style.color = netSavings >= 0 ? "#16a34a" : "#dc2626";
+            document.getElementById("repSavingsRate").textContent = `Savings Rate: ${savingsRate}%`;
+
+            // Render Category Table
+            const catTbody = document.getElementById("categoryTableBody");
+            catTbody.innerHTML = "";
+            const catKeys = Object.keys(catMap);
+
+            if (catKeys.length === 0) {
+                catTbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #888; padding: 20px;">No expense data for this period.</td></tr>`;
+            } else {
+                catKeys.sort((a, b) => catMap[b] - catMap[a]);
+                catKeys.forEach(cat => {
+                    const amt = catMap[cat];
+                    const share = totalExpense > 0 ? Math.round((amt / totalExpense) * 100) : 0;
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td><strong>${escapeHtml(cat)}</strong></td>
+                        <td>₹${amt.toLocaleString()}</td>
+                        <td><span class="badge" style="background: #e0e7ff; color: #4338ca;">${share}%</span></td>
+                    `;
+                    catTbody.appendChild(tr);
+                });
+            }
+
+            // Render Chart
+            renderChart(catMap);
+
+            // Render Detailed Table
+            const txTbody = document.getElementById("reportTxTableBody");
+            txTbody.innerHTML = "";
+
+            if (currentFilteredTx.length === 0) {
+                txTbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #888; padding: 25px;">No transactions recorded for this period.</td></tr>`;
+            } else {
+                currentFilteredTx.forEach(t => {
+                    const tr = document.createElement("tr");
+                    const dateFormatted = t.created_at ? new Date(t.created_at).toLocaleDateString() : "-";
+                    tr.innerHTML = `
+                        <td>${dateFormatted}</td>
+                        <td><strong>${escapeHtml(t.description)}</strong></td>
+                        <td>${escapeHtml(t.category)}</td>
+                        <td><span class="badge ${t.type === 'income' ? 'badge-income' : 'badge-expense'}">${t.type.toUpperCase()}</span></td>
+                        <td style="font-weight: bold; color: ${t.type === 'income' ? '#16a34a' : '#dc2626'}">
+                            ${t.type === 'income' ? '+' : '-'}₹${Number(t.amount).toLocaleString()}
+                        </td>
+                    `;
+                    txTbody.appendChild(tr);
+                });
+            }
+        }
+
+        function renderChart(catMap) {
+            const canvas = document.getElementById("reportChart");
+            const noMsg = document.getElementById("noReportChartMsg");
+            const labels = Object.keys(catMap);
+            const data = Object.values(catMap);
+
+            if (labels.length === 0) {
+                canvas.style.display = "none";
+                noMsg.style.display = "block";
+                return;
+            }
+
+            canvas.style.display = "block";
+            noMsg.style.display = "none";
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const ctx = canvas.getContext("2d");
+            chartInstance = new Chart(ctx, {
+                type: "doughnut",
+                data: {
+                    labels,
+                    datasets: [{
+                        data,
+                        backgroundColor: [
+                            "#4f46e5", "#06b6d4", "#10b981", "#f59e0b",
+                            "#ef4444", "#8b5cf6", "#ec4899", "#64748b"
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: "right" }
+                    }
+                }
+            });
+        }
+
+        function exportToCSV() {
+            if (!currentFilteredTx || currentFilteredTx.length === 0) {
+                alert("No transactions available to export for the selected period.");
+                return;
+            }
+
+            // CSV Header
+            const headers = ["ID", "Date", "Description", "Category", "Type", "Amount (INR)"];
+            const rows = currentFilteredTx.map(t => {
+                const date = t.created_at ? new Date(t.created_at).toISOString().split('T')[0] : "";
+                const desc = `"${String(t.description).replace(/"/g, '""')}"`;
+                const cat = `"${String(t.category).replace(/"/g, '""')}"`;
+                const type = t.type;
+                const amt = Number(t.amount).toFixed(2);
+                return [t.id, date, desc, cat, type, amt].join(",");
+            });
+
+            const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+
+            const scope = document.getElementById("reportScope").value;
+            const month = document.getElementById("reportMonth").value || "all";
+            const filename = `BudgetBuddy_Report_${scope === "all" ? "AllTime" : month}.csv`;
+
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        initReports();
+    </script>
+
+</body>
+</html>

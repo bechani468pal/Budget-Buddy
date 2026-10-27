@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy - Transactions</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <header>
+        <div class="nav-container">
+            <div class="brand">
+                <h1>💰 BudgetBuddy</h1>
+                <p>Smart Expense Tracker</p>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">Dashboard</a>
+                <a href="transactions.html" class="nav-link active">Transactions</a>
+                <a href="budget.html" class="nav-link">Budget</a>
+                <a href="savings.html" class="nav-link">Savings Goals</a>
+                <a href="reports.html" class="nav-link">Reports</a>
+                <a href="profile.html" class="nav-link">Profile</a>
+                <a href="admin.html" class="nav-link admin-only" id="adminNavLink" style="display: none;">Admin</a>
+            </nav>
+            <div class="user-badge">
+                <span id="navUserName">User</span>
+                <button onclick="logout()" class="btn-logout">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <div class="welcome">
+            <h2>Transaction Management</h2>
+            <p>Add, filter, and track all your income and expenses.</p>
+        </div>
+
+        <!-- Add Transaction Form -->
+        <div class="section">
+            <h2 id="formTitle">Add Income / Expense</h2>
+
+            <form id="txForm" onsubmit="handleSaveTransaction(event)">
+                <input type="hidden" id="editTxId">
+                <div class="form">
+                    <div>
+                        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Description *</label>
+                        <input type="text" id="description" placeholder="e.g., Grocery Shopping, Salary" required>
+                    </div>
+
+                    <div>
+                        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Amount (₹) *</label>
+                        <input type="number" step="0.01" min="0.01" id="amount" placeholder="e.g., 1500" required>
+                    </div>
+
+                    <div>
+                        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Transaction Type *</label>
+                        <select id="type" required>
+                            <option value="">Select Type</option>
+                            <option value="income">Income (+)</option>
+                            <option value="expense">Expense (-)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="font-size: 13px; color: #555; display: block; margin-bottom: 5px;">Category *</label>
+                        <select id="category" required>
+                            <option value="">Select Category</option>
+                            <option value="Food">Food & Dining</option>
+                            <option value="Travel">Travel & Commute</option>
+                            <option value="Education">Education & Books</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Bills">Bills & Utilities</option>
+                            <option value="Health">Health & Medical</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-top: 18px; display: flex; gap: 10px;">
+                    <button type="submit" class="btn-primary" id="saveBtn">Add Transaction</button>
+                    <button type="button" class="btn-secondary" id="cancelEditBtn" style="display: none;" onclick="cancelEdit()">Cancel Edit</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="section" style="padding: 18px 25px;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex: 1;">
+                    <input type="text" id="searchInput" placeholder="🔍 Search description..." style="max-width: 260px;" oninput="applyFilters()">
+                    
+                    <select id="filterType" style="max-width: 160px;" onchange="applyFilters()">
+                        <option value="all">All Types</option>
+                        <option value="income">Income Only</option>
+                        <option value="expense">Expense Only</option>
+                    </select>
+
+                    <select id="filterCategory" style="max-width: 170px;" onchange="applyFilters()">
+                        <option value="all">All Categories</option>
+                        <option value="Food">Food</option>
+                        <option value="Travel">Travel</option>
+                        <option value="Education">Education</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Bills">Bills</option>
+                        <option value="Health">Health</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div style="font-size: 14px; color: #666;">
+                    Showing <strong id="recordCount">0</strong> transactions
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions Table -->
+        <div class="section">
+            <h2>All Transactions</h2>
+
+            <div class="table-wrapper">
+                <table class="recent">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsTbody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #888; padding: 25px;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        const user = requireAuth();
+        let allTransactions = [];
+
+        if (user) {
+            document.getElementById("navUserName").textContent = user.name;
+            if (user.role === "admin") {
+                document.getElementById("adminNavLink").style.display = "inline-block";
+            }
+        }
+
+        function logout() {
+            clearAuthSession();
+            window.location.href = "login.html";
+        }
+
+        async function loadTransactions() {
+            try {
+                const res = await apiFetch("/api/transactions");
+                allTransactions = await res.json();
+                applyFilters();
+            } catch (err) {
+                console.error("Fetch transactions error:", err);
+            }
+        }
+
+        function applyFilters() {
+            const search = document.getElementById("searchInput").value.trim().toLowerCase();
+            const filterType = document.getElementById("filterType").value;
+            const filterCat = document.getElementById("filterCategory").value;
+
+            const filtered = allTransactions.filter(t => {
+                const matchSearch = t.description.toLowerCase().includes(search);
+                const matchType = (filterType === "all") || (t.type === filterType);
+                const matchCat = (filterCat === "all") || (t.category === filterCat);
+                return matchSearch && matchType && matchCat;
+            });
+
+            renderTable(filtered);
+        }
+
+        function renderTable(list) {
+            const tbody = document.getElementById("transactionsTbody");
+            document.getElementById("recordCount").textContent = list.length;
+            tbody.innerHTML = "";
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #888; padding: 30px;">No transactions found matching your criteria.</td></tr>`;
+                return;
+            }
+
+            list.forEach(t => {
+                const tr = document.createElement("tr");
+                const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString() : "-";
+                tr.innerHTML = `
+                    <td><strong>${escapeHtml(t.description)}</strong></td>
+                    <td>${escapeHtml(t.category)}</td>
+                    <td><span class="badge ${t.type === 'income' ? 'badge-income' : 'badge-expense'}">${t.type.toUpperCase()}</span></td>
+                    <td style="font-weight: bold; color: ${t.type === 'income' ? '#16a34a' : '#dc2626'}">
+                        ${t.type === 'income' ? '+' : '-'}₹${Number(t.amount).toLocaleString()}
+                    </td>
+                    <td>${dateStr}</td>
+                    <td style="text-align: right;">
+                        <button class="btn-action-edit" onclick="startEdit(${t.id}, '${escapeQuote(t.description)}', ${t.amount}, '${t.type}', '${t.category}')">Edit</button>
+                        <button class="btn-action-delete" onclick="deleteTx(${t.id})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function handleSaveTransaction(event) {
+            event.preventDefault();
+
+            const editId = document.getElementById("editTxId").value;
+            const description = document.getElementById("description").value.trim();
+            const amount = Number(document.getElementById("amount").value);
+            const type = document.getElementById("type").value;
+            const category = document.getElementById("category").value;
+
+            if (!description || amount <= 0 || !type || !category) {
+                alert("Please fill in all transaction fields with valid values.");
+                return;
+            }
+
+            const payload = { description, amount, type, category };
+
+            try {
+                if (editId) {
+                    // Update
+                    const res = await apiFetch(`/api/transactions/${editId}`, {
+                        method: "PUT",
+                        body: payload
+                    });
+                    if (res.ok) {
+                        alert("✓ Transaction updated successfully!");
+                        cancelEdit();
+                        loadTransactions();
+                    } else {
+                        const err = await res.json();
+                        alert("Error: " + (err.error || "Failed to update"));
+                    }
+                } else {
+                    // Create
+                    const res = await apiFetch("/api/transactions", {
+                        method: "POST",
+                        body: payload
+                    });
+                    if (res.ok) {
+                        alert("✓ Transaction added successfully!");
+                        document.getElementById("txForm").reset();
+                        loadTransactions();
+                    } else {
+                        const err = await res.json();
+                        alert("Error: " + (err.error || "Failed to add"));
+                    }
+                }
+            } catch (err) {
+                console.error("Save error:", err);
+            }
+        }
+
+        function startEdit(id, desc, amount, type, cat) {
+            document.getElementById("editTxId").value = id;
+            document.getElementById("description").value = desc;
+            document.getElementById("amount").value = amount;
+            document.getElementById("type").value = type;
+            document.getElementById("category").value = cat;
+
+            document.getElementById("formTitle").textContent = "Edit Transaction";
+            document.getElementById("saveBtn").textContent = "Save Changes";
+            document.getElementById("cancelEditBtn").style.display = "inline-block";
+
+            window.scrollTo({ top: 150, behavior: "smooth" });
+        }
+
+        function cancelEdit() {
+            document.getElementById("editTxId").value = "";
+            document.getElementById("txForm").reset();
+            document.getElementById("formTitle").textContent = "Add Income / Expense";
+            document.getElementById("saveBtn").textContent = "Add Transaction";
+            document.getElementById("cancelEditBtn").style.display = "none";
+        }
+
+        async function deleteTx(id) {
+            if (!confirm("Are you sure you want to delete this transaction?")) return;
+
+            try {
+                const res = await apiFetch(`/api/transactions/${id}`, { method: "DELETE" });
+                if (res.ok) {
+                    alert("✓ Transaction deleted.");
+                    loadTransactions();
+                } else {
+                    alert("Failed to delete transaction.");
+                }
+            } catch (err) {
+                console.error("Delete error:", err);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeQuote(str) {
+            return String(str).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        }
+
+        loadTransactions();
+    </script>
+
+</body>
+</html>
+

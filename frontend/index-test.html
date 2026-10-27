@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy</title>
+</head>
+
+<body>
+
+    <h1>Welcome to BudgetBuddy</h1>
+
+    <p>Smart Expense Tracker for Personal Finance Management</p>
+
+    <button onclick="checkServer()">Check Server</button>
+
+    <p id="message"></p>
+
+    <script>
+        async function checkServer() {
+            const response = await fetch("http://localhost:5000/");
+            const message = await response.text();
+
+            document.getElementById("message").textContent = message;
+        }
+    </script>
+
+</body>
+</html>

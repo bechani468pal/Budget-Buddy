@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy - Login</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .login-box {
+            background: white;
+            width: 360px;
+            padding: 35px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #4f46e5;
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 26px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 16px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #3730a3;
+        }
+
+        p {
+            text-align: center;
+            font-size: 14px;
+            color: #555;
+            margin-top: 15px;
+        }
+
+        a {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .msg-error {
+            color: #dc2626;
+            margin-top: 12px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .msg-success {
+            color: #16a34a;
+            margin-top: 12px;
+            text-align: center;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-box">
+
+        <h1>💰 BudgetBuddy</h1>
+        <h2>Login to Account</h2>
+
+        <form id="loginForm">
+
+            <input
+                type="email"
+                id="email"
+                placeholder="Enter your email"
+                required
+            >
+
+            <input
+                type="password"
+                id="password"
+                placeholder="Enter your password"
+                required
+            >
+
+            <button type="submit" id="submitBtn">Login</button>
+
+        </form>
+
+        <p id="message"></p>
+
+        <p>
+            Don't have an account?
+            <a href="register.html">Register</a>
+        </p>
+
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        const loginForm = document.getElementById("loginForm");
+        const messageEl = document.getElementById("message");
+        const submitBtn = document.getElementById("submitBtn");
+
+        // Redirect according to the logged-in user's role
+if (getAuthToken() && getAuthUser()) {
+    const currentUser = getAuthUser();
+
+    if (currentUser.role === "admin") {
+        window.location.href = "admin.html";
+    } else {
+        window.location.href = "index.html";
+    }
+}
+
+        loginForm.addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+
+            messageEl.textContent = "";
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Logging in...";
+
+            try {
+                const response = await fetch(`${API_BASE}/api/login`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Save both token and user object
+                    setAuthSession(data.token, data.user);
+
+                    messageEl.className = "msg-success";
+                    messageEl.textContent = "✓ Login successful! Redirecting...";
+
+                   setTimeout(() => {
+    if (data.user.role === "admin") {
+        window.location.href = "admin.html";
+    } else {
+        window.location.href = "index.html";
+    }
+}, 500);
+
+                } else {
+                    messageEl.className = "msg-error";
+                    messageEl.textContent = data.error || "Invalid email or password.";
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Login";
+                }
+
+            } catch (error) {
+                console.error("Login error:", error);
+                messageEl.className = "msg-error";
+                messageEl.textContent = "Could not connect to the server.";
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Login";
+            }
+        });
+    </script>
+
+</body>
+</html>

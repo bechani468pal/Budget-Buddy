@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BudgetBuddy - My Profile</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .profile-container {
+            max-width: 700px;
+            margin: auto;
+        }
+
+        .profile-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 25px;
+        }
+
+        .profile-avatar {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #4f46e5;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .profile-info h3 {
+            font-size: 20px;
+            color: #1e1b4b;
+            margin-bottom: 4px;
+        }
+
+        .profile-info p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .role-badge {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .role-user {
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+
+        .role-admin {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .msg-box {
+            padding: 12px 16px;
+            border-radius: 7px;
+            margin-bottom: 18px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .msg-box.success {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+            display: block;
+        }
+
+        .msg-box.error {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="nav-container">
+            <div class="brand">
+                <h1>💰 BudgetBuddy</h1>
+                <p>Smart Expense Tracker</p>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">Dashboard</a>
+                <a href="transactions.html" class="nav-link">Transactions</a>
+                <a href="budget.html" class="nav-link">Budget</a>
+                <a href="savings.html" class="nav-link">Savings Goals</a>
+                <a href="reports.html" class="nav-link">Reports</a>
+                <a href="profile.html" class="nav-link active">Profile</a>
+                <a href="admin.html" class="nav-link admin-only" id="adminNavLink" style="display: none;">Admin</a>
+            </nav>
+            <div class="user-badge">
+                <span id="navUserName">User</span>
+                <button onclick="logout()" class="btn-logout">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <div class="profile-container">
+
+            <div class="welcome">
+                <h2>User Profile Settings</h2>
+                <p>Manage your account credentials and personal information.</p>
+            </div>
+
+            <!-- Profile Summary Card -->
+            <div class="profile-card">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="avatarInitial">U</div>
+                    <div class="profile-info">
+                        <h3 id="displayHeaderName">Loading...</h3>
+                        <p id="displayHeaderEmail">Loading...</p>
+                        <span id="displayRoleBadge" class="role-badge role-user">User</span>
+                        <p id="displayJoinedDate" style="margin-top: 6px; font-size: 12px; color: #9ca3af;"></p>
+                    </div>
+                </div>
+
+                <div id="profileAlert" class="msg-box"></div>
+
+                <!-- Update Basic Details -->
+                <h3 style="font-size: 17px; color: #1f2937; margin-bottom: 16px;">Personal Information</h3>
+
+                <form id="profileForm" onsubmit="handleUpdateProfile(event)">
+                    <div class="form-group">
+                        <label for="profName">Full Name *</label>
+                        <input type="text" id="profName" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profEmail">Email Address *</label>
+                        <input type="email" id="profEmail" required>
+                    </div>
+
+                    <div style="margin-top: 25px; padding-top: 20px; border-top: 1px dashed #e5e7eb;">
+                        <h3 style="font-size: 17px; color: #1f2937; margin-bottom: 16px;">Change Password (Optional)</h3>
+                        <p style="font-size: 13px; color: #6b7280; margin-bottom: 14px;">Leave blank if you do not want to change your password.</p>
+
+                        <div class="form-group">
+                            <label for="currentPassword">Current Password</label>
+                            <input type="password" id="currentPassword" placeholder="Enter current password to authorize changes">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="newPassword">New Password</label>
+                            <input type="password" id="newPassword" placeholder="Minimum 6 characters" minlength="6">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm New Password</label>
+                            <input type="password" id="confirmPassword" placeholder="Re-enter new password">
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 25px; display: flex; gap: 12px; align-items: center;">
+                        <button type="submit" class="btn-primary" id="saveProfileBtn">Save Changes</button>
+                        <button type="button" class="btn-secondary" onclick="logout()">Logout</button>
+                    </div>
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="api.js"></script>
+    <script>
+        const user = requireAuth();
+
+        if (user) {
+            document.getElementById("navUserName").textContent = user.name;
+            if (user.role === "admin") {
+                document.getElementById("adminNavLink").style.display = "inline-block";
+            }
+        }
+
+        function logout() {
+            clearAuthSession();
+            window.location.href = "login.html";
+        }
+
+        async function loadProfile() {
+            try {
+                const res = await apiFetch("/api/user/profile");
+                const data = await res.json();
+                const u = data.user;
+
+                document.getElementById("displayHeaderName").textContent = u.name;
+                document.getElementById("displayHeaderEmail").textContent = u.email;
+                document.getElementById("profName").value = u.name;
+                document.getElementById("profEmail").value = u.email;
+                document.getElementById("avatarInitial").textContent = u.name.charAt(0).toUpperCase();
+
+                const roleBadge = document.getElementById("displayRoleBadge");
+                roleBadge.textContent = u.role.toUpperCase();
+                roleBadge.className = `role-badge ${u.role === 'admin' ? 'role-admin' : 'role-user'}`;
+
+                if (u.created_at) {
+                    const joined = new Date(u.created_at).toLocaleDateString();
+                    document.getElementById("displayJoinedDate").textContent = `Member since: ${joined}`;
+                }
+
+            } catch (err) {
+                console.error("Load profile error:", err);
+            }
+        }
+
+        async function handleUpdateProfile(event) {
+            event.preventDefault();
+
+            const name = document.getElementById("profName").value.trim();
+            const email = document.getElementById("profEmail").value.trim();
+            const currentPassword = document.getElementById("currentPassword").value;
+            const newPassword = document.getElementById("newPassword").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+            const alertBox = document.getElementById("profileAlert");
+            const saveBtn = document.getElementById("saveProfileBtn");
+
+            alertBox.className = "msg-box";
+            alertBox.style.display = "none";
+
+            if (!name || !email) {
+                alertBox.className = "msg-box error";
+                alertBox.textContent = "Name and email cannot be empty.";
+                return;
+            }
+
+            if (newPassword) {
+                if (newPassword.length < 6) {
+                    alertBox.className = "msg-box error";
+                    alertBox.textContent = "New password must be at least 6 characters long.";
+                    return;
+                }
+                if (newPassword !== confirmPassword) {
+                    alertBox.className = "msg-box error";
+                    alertBox.textContent = "New password and confirmation do not match.";
+                    return;
+                }
+                if (!currentPassword) {
+                    alertBox.className = "msg-box error";
+                    alertBox.textContent = "Please enter your current password to set a new password.";
+                    return;
+                }
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Saving...";
+
+            try {
+                const payload = { name, email };
+                if (newPassword) {
+                    payload.currentPassword = currentPassword;
+                    payload.newPassword = newPassword;
+                }
+
+                const res = await apiFetch("/api/user/profile", {
+                    method: "PUT",
+                    body: payload
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Refresh stored session credentials
+                    setAuthSession(data.token, data.user);
+
+                    alertBox.className = "msg-box success";
+                    alertBox.textContent = "✓ Profile updated successfully!";
+
+                    document.getElementById("navUserName").textContent = data.user.name;
+                    document.getElementById("displayHeaderName").textContent = data.user.name;
+                    document.getElementById("displayHeaderEmail").textContent = data.user.email;
+                    document.getElementById("avatarInitial").textContent = data.user.name.charAt(0).toUpperCase();
+
+                    // Clear password fields
+                    document.getElementById("currentPassword").value = "";
+                    document.getElementById("newPassword").value = "";
+                    document.getElementById("confirmPassword").value = "";
+                } else {
+                    alertBox.className = "msg-box error";
+                    alertBox.textContent = data.error || "Failed to update profile.";
+                }
+
+            } catch (err) {
+                console.error("Profile update error:", err);
+                alertBox.className = "msg-box error";
+                alertBox.textContent = err.message || "Network error. Failed to save changes.";
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "Save Changes";
+            }
+        }
+
+        loadProfile();
+    </script>
+
+</body>
+</html>
